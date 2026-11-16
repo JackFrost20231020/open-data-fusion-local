@@ -1,0 +1,45 @@
+node_modules/
+dist/
+coverage/
+.vite/
+*.log
+*.tsbuildinfo
+__pycache__/
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+data/*.db
+data/*.db-shm
+data/*.db-wal
+apps/api/data/
+.serena/
+docs/superpowers/
+.worktrees/
+
+# Clean-room research captures are local evidence, not redistributable product assets.
+docs/design/cognite-demo-reference.png
+docs/design/reference/
+
+# Local industrial case packages (no redistribution license). Never commit raw case files.
+data/cases/
+
+# Local evaluation outputs and case screenshots (may contain derived case content).
+odf-shots/
+../odf-eval/
+
+# Secrets and generated data (never publish)
+**/.odf-dev-secret*
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.db.bak*
+*.bak
+
+# Local evidence and private case derivatives (not part of the public tree)
+odf-demo/
+odf-eval/
+odf-shots/
+odf-release/
+*.mp4
