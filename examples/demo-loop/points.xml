@@ -1,0 +1,20 @@
+
+    (TYPE="AnalogPoint" NAME="DEMO-PT001"
+     [DESCRIPTION="Press"
+     IO_LOCATION="1.4.4"
+     IO_CHANNEL="2"]
+    )
+    (TYPE="AnalogPoint" NAME="DEMO-PT001-1"
+     [DESCRIPTION="Press child"
+     IO_LOCATION="1.4.4"
+     IO_CHANNEL="3"]
+    )
+    (TYPE="AnalogPoint" NAME="DEMO-FT999"
+     [DESCRIPTION="Flow sibling on same card"
+     IO_LOCATION="1.4.4"
+     IO_CHANNEL="4"]
+    )
+    (TYPE="AnalogPoint" NAME="RCS-LT002"
+     [DESCRIPTION="Level"
+     IO_LOCATION="2.1.1"]
+    )
