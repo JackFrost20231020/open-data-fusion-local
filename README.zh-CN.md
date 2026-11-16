@@ -154,7 +154,7 @@ npm run dev
 启动脚本会：
 
 - 检查 Node.js 是否 ≥ 24
-- **强制使用 `apps/web/node_modules` 里的 Vite 8**，避免误用仓库根目录 hoisted 的 Vite 7
+- **使用 Vite 8**。npm 可能把它提升到仓库根目录 `node_modules`，这没问题；不要改用 Vite 7
 - 同时拉起 API 与前端，Ctrl+C 会一起停掉
 
 启动成功后：
@@ -260,7 +260,7 @@ npm test
 npm run build
 ```
 
-前端构建使用 **Vite 8**（`apps/web` 依赖，而不是根目录可能存在的 Vite 7）。
+前端构建使用 **Vite 8**（当前锁定 8.3.8）。不要用 Vite 7 启动 `apps/web`。
 
 API 生产启动示例（先构建）：
 
@@ -303,7 +303,7 @@ npx vite --version   # 若解析到 7.x 也不要用它启动 apps/web
 确认前端用的是 8.x：
 
 ```bash
-node apps/web/node_modules/vite/bin/vite.js --version
+npm exec --workspace @open-data-fusion/web -- vite --version
 ```
 
 ### `EADDRINUSE` / 端口被占用

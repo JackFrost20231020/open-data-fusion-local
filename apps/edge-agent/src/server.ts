@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   await runner.run(shutdown.signal);
 }
 
-main().catch((error: unknown) => {
-  console.error("Edge agent failed", { error: error instanceof Error ? error.message : String(error) });
+main().catch(() => {
+  console.error("Edge agent failed");
   process.exitCode = 1;
 });

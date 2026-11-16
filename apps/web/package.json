@@ -5,8 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node ./node_modules/vite/bin/vite.js",
-    "build": "tsc -p tsconfig.json && node ./node_modules/vite/bin/vite.js build",
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json && vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -27,7 +27,7 @@
     "@vitejs/plugin-react": "6.0.3",
     "jsdom": "29.1.1",
     "typescript": "^7.0.2",
-    "vite": "8.1.4",
+    "vite": "8.3.8",
     "vitest": "4.1.10"
   }
 }

@@ -23,8 +23,14 @@ export interface ApiObservability {
 
 function bearerToken(header: string | undefined): string | null {
   if (!header) return null;
-  const match = /^Bearer\s+(.+)$/iu.exec(header.trim());
-  return match?.[1] ?? null;
+  const trimmed = header.trim();
+  if (trimmed.length === 0 || trimmed.length > 8192) return null;
+  const space = trimmed.indexOf(" ");
+  if (space <= 0) return null;
+  if (trimmed.slice(0, space).toLowerCase() !== "bearer") return null;
+  const token = trimmed.slice(space + 1).trim();
+  if (!token || /\s/u.test(token)) return null;
+  return token;
 }
 
 function equalSecret(left: string, right: string): boolean {

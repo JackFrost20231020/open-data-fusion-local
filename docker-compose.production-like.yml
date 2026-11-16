@@ -78,8 +78,13 @@ services:
 
   # Creates the private, versioned bucket and the sole API-scoped S3 user.
   # The API image never receives the MinIO root credentials.
+  # Docker Hub minio/mc is not anonymously pullable; build the signed
+  # upstream client release instead of that repository.
   minio-bootstrap:
-    image: minio/mc@sha256:95b5f3f7969a5c5a9f3a700ba72d5c84172819e13385aaf916e237cf111ab868
+    build:
+      context: .
+      dockerfile: infra/minio/Dockerfile.mc
+    image: open-data-fusion-mc:production-like
     profiles: ["production-like"]
     restart: "no"
     entrypoint: ["/bin/sh", "/bootstrap.sh"]

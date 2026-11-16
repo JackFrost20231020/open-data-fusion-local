@@ -1,6 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 
 import type { Express, Request, RequestHandler } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 
 import type { DataPlanePermission } from './auth.js';
@@ -135,11 +136,28 @@ async function sendContent(
   }
 }
 
+const governedObjectRateLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 2_000,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (_request, response) => {
+    response.status(429).json({
+      error: {
+        code: 'rate_limited',
+        message: 'Too many governed-object requests. Try again later.',
+      },
+    });
+  },
+});
+
 export function registerGovernedObjectRoutes(
   app: Express,
   store: GovernedObjectPersistence | null,
   authorizeProject: GovernedObjectRouteAuthorizer,
 ): void {
+  app.use('/api/v1/platform/objects', governedObjectRateLimiter);
+  app.use('/api/v1/platform/files', governedObjectRateLimiter);
   const upload: RequestHandler = async (request, response) => {
     const { context, identity } = await authorizeProject(request, 'data:ingest', ['owner', 'editor']);
     if (!store) {

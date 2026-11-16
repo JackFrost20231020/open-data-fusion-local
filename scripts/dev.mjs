@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Cross-platform local starter for the API and Vite 8 web app.
- * Always launches apps/web's own Vite 8 binary — never the hoisted Vite 7.
+ * Uses the workspace Vite 8 binary, including the copy npm hoists to the
+ * repository root. Refuses Vite 7.
  */
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
@@ -9,8 +10,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const viteBin = join(root, "apps/web/node_modules/vite/bin/vite.js");
 const webDir = join(root, "apps/web");
+const viteCandidates = [
+  join(webDir, "node_modules/vite/bin/vite.js"),
+  join(root, "node_modules/vite/bin/vite.js"),
+];
 
 function major(version) {
   const match = String(version).replace(/^v/, "").split(".")[0];
@@ -28,22 +32,19 @@ if (!existsSync(join(root, "node_modules"))) {
   process.exit(1);
 }
 
-if (!existsSync(viteBin)) {
-  console.error("找不到 apps/web/node_modules 下的 Vite 8。请在仓库根目录重新运行 npm ci。");
-  console.error("不要用仓库根目录 hoisted 的 Vite 7 启动前端，否则 /@vite/client 和 /src/main.tsx 会返回 500（Missing field moduleType）。");
+const viteBin = viteCandidates.find((candidate) => existsSync(candidate));
+if (!viteBin) {
+  console.error("找不到 Vite。请在仓库根目录重新运行 npm ci。");
   process.exit(1);
 }
 
-try {
-  const version = JSON.parse(readFileSync(join(root, "apps/web/node_modules/vite/package.json"), "utf8")).version;
-  if (major(version) < 8) {
-    console.error(`apps/web 的 Vite 版本是 ${version}，需要 8.x。请勿改用根目录的 Vite 7。`);
-    process.exit(1);
-  }
-  console.log(`使用 Vite ${version}（apps/web/node_modules）`);
-} catch {
-  // continue; the binary still may work
+const vitePackage = join(dirname(viteBin), "..", "package.json");
+const viteVersion = JSON.parse(readFileSync(vitePackage, "utf8")).version;
+if (major(viteVersion) < 8) {
+  console.error(`解析到的 Vite 是 ${viteVersion}，需要 8.x。Vite 7 会让 /@vite/client 和 /src/main.tsx 返回 500（Missing field moduleType）。`);
+  process.exit(1);
 }
+console.log(`使用 Vite ${viteVersion}（${viteBin}）`);
 
 const apiPort = process.env.PORT || "4310";
 const webPort = process.env.WEB_PORT || "5173";

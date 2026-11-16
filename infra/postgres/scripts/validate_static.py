@@ -615,7 +615,7 @@ def validate_runtime_artifacts() -> None:
         "odf_minio_root_user",
         "odf_minio_api_secret_key",
         "odf_minio_kms_secret_key",
-        "minio/mc@sha256:",
+        "dockerfile: infra/minio/Dockerfile.mc",
         "dockerfile: infra/minio/Dockerfile",
         "KC_HOSTNAME: http://keycloak:8080",
         "service_completed_successfully",
@@ -635,6 +635,18 @@ def validate_runtime_artifacts() -> None:
         "test \"$(git rev-parse HEAD)\" = \"${MINIO_COMMIT}\"",
     ]:
         require(guardrail in minio_dockerfile, f"MinIO source image is missing immutable build guardrail: {guardrail}")
+
+    mc_dockerfile = read(ROOT / "infra" / "minio" / "Dockerfile.mc")
+    for guardrail in [
+        "golang:1.24.8-bookworm@sha256:",
+        "debian:bookworm-slim@sha256:",
+        "MC_RELEASE=RELEASE.2025-08-13T08-35-41Z",
+        "MC_COMMIT=7394ce0dd2a80935aded936b09fa12cbb3cb8096",
+        "test \"$(git rev-parse HEAD)\" = \"${MC_COMMIT}\"",
+        "https://github.com/minio/mc.git",
+    ]:
+        require(guardrail in mc_dockerfile, f"MinIO client image is missing immutable build guardrail: {guardrail}")
+    require("minio/mc@" not in production_like, "production-like profile must not pull the unavailable Docker Hub minio/mc image")
 
     minio_bootstrap = read(ROOT / "infra" / "minio" / "bootstrap.sh")
     for guardrail in [

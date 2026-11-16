@@ -17,6 +17,7 @@ RUN npm ci --workspace @open-data-fusion/web --include-workspace-root
 
 COPY tsconfig.base.json ./
 COPY apps/web ./apps/web
+COPY apps/api/src/dev-auth.ts ./apps/api/src/dev-auth.ts
 COPY packages/contracts ./packages/contracts
 ARG VITE_FII_SSO=
 ARG VITE_FII_LOGIN_URL=

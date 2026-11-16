@@ -27,12 +27,13 @@ function isAllowedAttrName(name: string): boolean {
 }
 
 function isSafeUrl(value: string, tag: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith("#")) return true;
-  const lower = trimmed.toLowerCase();
-  if (lower.startsWith("javascript:") || lower.startsWith("vbscript:") || lower.startsWith("data:text/html")) return false;
-  if (tag === "image" && /^data:image\//i.test(trimmed)) return true;
+  const compact = value.trim().replace(/[\u0000-\u001F\u007F\s]+/g, "");
+  if (!compact) return false;
+  if (compact.startsWith("#")) return !compact.includes(":");
+  const lower = compact.toLowerCase();
+  if (lower.startsWith("data:")) {
+    return tag === "image" && /^data:image\/(?:png|jpe?g|gif|webp)[;,]/i.test(lower);
+  }
   return false;
 }
 
@@ -57,14 +58,69 @@ function escapeXmlText(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function textOutsideTags(html: string): string {
+  let text = "";
+  for (let index = 0; index < html.length; index += 1) {
+    if (html[index] !== "<") {
+      text += html[index];
+      continue;
+    }
+    const end = html.indexOf(">", index + 1);
+    if (end === -1) break;
+    index = end;
+  }
+  return text;
+}
+
+function removeBoundedRegion(source: string, startMark: string, endMark: string): string {
+  const lower = source.toLowerCase();
+  const startLower = startMark.toLowerCase();
+  const endLower = endMark.toLowerCase();
+  let result = "";
+  let index = 0;
+  while (index < source.length) {
+    const start = lower.indexOf(startLower, index);
+    if (start === -1) return result + source.slice(index);
+    result += source.slice(index, start);
+    const end = lower.indexOf(endLower, start + startLower.length);
+    if (end === -1) return result;
+    index = end + endLower.length;
+  }
+  return result;
+}
+
+function removeElements(source: string, tagName: string): string {
+  const lowerSource = source.toLowerCase();
+  const open = `<${tagName.toLowerCase()}`;
+  const close = `</${tagName.toLowerCase()}`;
+  let result = "";
+  let index = 0;
+  while (index < source.length) {
+    const start = lowerSource.indexOf(open, index);
+    if (start === -1) return result + source.slice(index);
+    const boundary = lowerSource[start + open.length] ?? "";
+    if (/[a-z0-9]/i.test(boundary)) {
+      result += source.slice(index, start + 1);
+      index = start + 1;
+      continue;
+    }
+    result += source.slice(index, start);
+    if (boundary === "/" || lowerSource.slice(start, lowerSource.indexOf(">", start) + 1).includes("/>")) {
+      const end = lowerSource.indexOf(">", start);
+      index = end === -1 ? source.length : end + 1;
+      continue;
+    }
+    const endTag = lowerSource.indexOf(close, start + open.length);
+    if (endTag === -1) return result;
+    const end = lowerSource.indexOf(">", endTag + close.length);
+    index = end === -1 ? source.length : end + 1;
+  }
+  return result;
+}
+
 function extractSafeLabel(html: string): string | null {
-  const stripped = html
-    .replace(/<script\b[\s\S]*?<\/script>/gi, "")
-    .replace(/<style\b[\s\S]*?<\/style>/gi, "")
-    .replace(/on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
-  const text = stripped.replace(/<[^>]+>/g, "").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
+  const text = textOutsideTags(html).replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim();
   if (!text || text.length > 8) return null;
-  if (/javascript:|data:text\/html|<\s*script/i.test(text)) return null;
   if (!/^[\w\u4e00-\u9fff+\-/*%°μΩ]+$/u.test(text)) return null;
   return text;
 }
@@ -148,13 +204,14 @@ export function sanitizeSvg(input: string | null | undefined): string {
   const source = String(input);
   if (!source.trim()) return "";
 
-  let svg = rewriteForeignObjects(source)
-    .replace(/<script\b[\s\S]*?<\/script>/gi, "")
-    .replace(/<foreignObject\b[\s\S]*?<\/foreignObject>/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "")
-    .replace(/<!DOCTYPE[\s\S]*?>/gi, "")
-    .replace(/<\?xml[\s\S]*?\?>/gi, "");
+  let svg = rewriteForeignObjects(source);
+  svg = removeElements(svg, "script");
+  svg = removeElements(svg, "style");
+  svg = removeElements(svg, "foreignObject");
+  svg = removeBoundedRegion(svg, "<!--", "-->");
+  svg = removeBoundedRegion(svg, "<![CDATA[", "]]>");
+  svg = removeBoundedRegion(svg, "<!DOCTYPE", ">");
+  svg = removeBoundedRegion(svg, "<?xml", "?>");
 
   svg = svg.replace(/<\/?([a-zA-Z][\w:-]*)([^>]*)>/g, (full, rawName: string, rawAttrs: string) => {
     const closing = full.startsWith("</");
@@ -184,8 +241,6 @@ export function sanitizeSvg(input: string | null | undefined): string {
     return selfClosing ? `<${rawName}${body}/>` : `<${rawName}${body}>`;
   });
 
-  // Drop leftover event-handler text from truncated/unclosed tags.
-  svg = svg.replace(/on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
   svg = svg.replace(/<([a-zA-Z][\w:-]*)[^>]*$/g, "");
   // Residual text (e.g. from dropped <style> tags) must not keep external urls.
   // Do not CSS-decode the whole document: that would corrupt path data and labels.

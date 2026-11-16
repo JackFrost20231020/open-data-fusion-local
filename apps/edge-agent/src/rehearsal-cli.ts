@@ -34,7 +34,7 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({ mode: "read-only", results }, null, 2));
 }
 
-main().catch((error: unknown) => {
-  console.error("Connector rehearsal failed", { error: error instanceof Error ? error.message : String(error) });
+main().catch(() => {
+  console.error("Connector rehearsal failed");
   process.exitCode = 1;
 });
