@@ -81,6 +81,7 @@ export interface CaseImportReport {
   sharedPipeRowsParsed: number;
   replacedPreviousImport: boolean;
   notes: string[];
+  sourceWarnings: string[];
   emptyObjSvg?: number;
   sanitizedSvgCount?: number;
   tenantId?: string;

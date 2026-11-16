@@ -15,7 +15,7 @@
 | --- | ---: | --- |
 | Node.js | **24 或更高** | API、前端、测试、构建 |
 | npm | **11 或更高** | 安装工作区依赖 |
-| Python 3 | 建议 3.10+ | 可选：基础设施校验；导入 `.xlsx` 共管表时需要 `openpyxl` |
+| Python 3 | **3.10 或更高**（本仓库在 3.12.3 上核对过） | 解析 `.xlsx` 共管表，以及跑包含该解析的单元测试。启动 Web/API 本身不需要 |
 | poppler（`pdftotext`） | 可选 | 解析案例包中的 PDF |
 | LibreOffice（`soffice`） | 可选 | 解析案例包中的 `.doc` / `.docx` |
 | Docker Compose | 可选 | PostgreSQL / Redis 等生产向配置，本地试用不必安装 |
@@ -28,6 +28,53 @@ npm -v     # 例如 11.21.1
 ```
 
 Windows 请从 [nodejs.org](https://nodejs.org/) 安装官方 LTS/Current 中满足上述要求的版本，并在 **PowerShell** 或 **Windows Terminal** 中操作。macOS 可用官方安装包或 `brew install node@24`。
+
+根 `package.json` 与 `package-lock.json` 的 `engines` 是 Node.js `>=24.0.0`、npm `>=11.0.0`。锁文件是 lockfileVersion 3，锁定的 TypeScript 是 **7.0.2**。`apps/api` 只声明了 Node.js `>=24.0.0`。这些是下限，不是“任意当前版本都能过类型检查”的承诺。
+
+### Python：哪些步骤需要，哪些不需要
+
+案例导入里的 `.xlsx` 共管表由 API 子进程执行 PATH 上的 **`python3`** 完成（`python3 -c` 再 `import openpyxl`）。代码没有 `ODF_PYTHON` 或其他解释器配置项；启动 API 的那个环境里必须能直接运行 `python3`，并且这个解释器已经装好下面的依赖。
+
+| 动作 | 是否需要 Python / openpyxl |
+| --- | --- |
+| `npm ci`、`npm run dev`、打开 `http://127.0.0.1:5173` 和 `http://127.0.0.1:4310` | 不需要。只需要 Node.js 24+ 与 npm 11+ |
+| 导入只有图谱 / 点表的案例，或只浏览画布 | 不需要 |
+| 解析 `shared-pipe.xlsx`（包括合成示例 `examples/demo-loop` 里的共管表） | 需要 `python3` 和 `requirements.txt` 里的 openpyxl |
+| `npm test` | 需要。`apps/api` 的案例导入测试会断言 xlsx 被解析；未安装时这两个测试失败，其余测试仍可运行 |
+| `npm run typecheck`、`npm run build` | 不需要 Python |
+| `npm run infra:validate` | 需要 PATH 上的 `python` / `python3`，只用标准库，不需要 openpyxl |
+| PDF（`pdftotext`）、Word（`soffice`） | 与 Python 无关，仍是可选外部程序 |
+
+不要用 `sudo` 或管理员权限做全局 `pip install`。依赖版本钉在仓库根目录的 `requirements.txt`（`openpyxl==3.1.5`，以及它需要的 `et-xmlfile==2.0.0`）。
+
+macOS / Linux（在仓库根目录，虚拟环境里的 `python3` 会排到 PATH 前面，API 子进程才能用到它）：
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r requirements.txt
+python3 -c "import openpyxl; print(openpyxl.__version__)"
+```
+
+Debian/Ubuntu 上若 `python3 -m venv` 报 `ensurepip is not available`，先用系统包安装 `python3-venv`（例如 `python3.12-venv`），再重建 `.venv`。这是系统包，不是 `sudo pip`。也可以不建虚拟环境，直接对 PATH 上的同一个 `python3` 做用户级安装：`python3 -m pip install --user -r requirements.txt`。
+
+Windows PowerShell。Windows 虚拟环境只有 `python.exe`，而 API 固定调用 `python3`，所以激活前先复制出一个同目录的 `python3.exe`：
+
+```powershell
+py -3 -m venv .venv
+Copy-Item .\.venv\Scripts\python.exe .\.venv\Scripts\python3.exe
+.\.venv\Scripts\Activate.ps1
+python3 -m pip install -r requirements.txt
+python3 -c "import openpyxl; print(openpyxl.__version__)"
+```
+
+若系统里已经有 `python3` 且你不使用虚拟环境，可以用用户级安装（仍然不要提权）：
+
+```powershell
+python3 -m pip install --user -r requirements.txt
+```
+
+macOS 上若系统 Python 拒绝安装（externally managed），使用上面的 `.venv`，不要改用 `sudo pip`。装完后，在**同一个已经激活虚拟环境的终端**里执行 `npm ci` 和 `npm run dev`。
 
 ---
 
@@ -200,11 +247,13 @@ http://127.0.0.1:5173/?view=canvas&tenant=demo&project=north-plant&user=local-us
 
 ## 构建与测试
 
+先按上一节装好 Python 依赖，再跑测试。类型检查和构建不读取 openpyxl，但 `npm test` 会。
+
 ```bash
 # 类型检查（各工作区）
 npm run typecheck
 
-# 单元测试
+# 单元测试（需要已激活的 python3 能 import openpyxl）
 npm test
 
 # 生产构建

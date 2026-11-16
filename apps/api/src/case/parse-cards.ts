@@ -160,10 +160,11 @@ export function parsePmsSlotTables(text: string, fileName: string): CardChannel[
     if (bcc?.[1]) cabinetHint = bcc[1].toUpperCase();
 
     const chStart = line.match(/^\s*(\d{1,2})\s{1,}(.+)$/);
-    if (!chStart || !cardId || !tu) continue;
-    const channel = Number(chStart[1]);
-    if (channel < 1 || channel > 16) continue;
-    const rest = chStart[2];
+    const channelText = chStart?.[1];
+    const rest = chStart?.[2];
+    if (!chStart || channelText === undefined || rest === undefined || !cardId || !tu) continue;
+    const channel = Number(channelText);
+    if (!Number.isInteger(channel) || channel < 1 || channel > 16) continue;
     // Collect JE/tag tokens in order; last of four columns is D sequence.
     const tags = [...rest.matchAll(/([A-Z]{2,5}-JE-[A-Z0-9]+|[A-Z]{2,5}-[A-Z]{2,}\d+[A-Z]?|PMS[A-D]-[\w-]+|IDS[A-D]-DS\d+|Not Used)/g)]
       .map((item) => item[1] ?? "")

@@ -1,0 +1,6 @@
+# Direct dependency for .xlsx shared-pipe parsing (apps/api case import)
+# and for the case-import unit tests. Infrastructure scripts use the
+# Python standard library only. Install into a virtual environment;
+# do not use sudo or an elevated global pip.
+openpyxl==3.1.5
+et-xmlfile==2.0.0

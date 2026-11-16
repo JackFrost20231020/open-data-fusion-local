@@ -47,13 +47,24 @@ This checkout is source for local Node.js services. Opening `apps/web/index.html
 
 | Tool | Version |
 | --- | --- |
-| Node.js | 24 or newer |
-| npm | 11 or newer |
+| Node.js | 24 or newer (`engines` and the lockfile say `>=24.0.0`) |
+| npm | 11 or newer (`engines` and the lockfile say `>=11.0.0`) |
+| Python | 3.10 or newer when parsing `.xlsx` or running `npm test`. Verified here with 3.12.3 |
+
+The lockfile is lockfileVersion 3 and pins TypeScript **7.0.2**. `apps/api` declares Node.js `>=24.0.0` only. These are minimums; they are not a claim that every newer toolchain typechecks this tree.
 
 Clone this repository and run the commands from its root. There is no extra `open-data-fusion/` directory. Do not push this tree to the upstream project.
 
+Web on `http://127.0.0.1:5173` and the API on `http://127.0.0.1:4310` need Node.js only. Python is required for `.xlsx` shared-pipe parsing, including the spreadsheet inside the synthetic `examples/demo-loop` fixture, and for `npm test` (the case-import tests expect that parse to succeed). `npm run typecheck` and `npm run build` do not import openpyxl. `npm run infra:validate` uses the Python standard library. PDF text needs optional `pdftotext`; Word text needs optional `soffice`.
+
+The importer spawns the executable named `python3` from the API process `PATH` (`python3 -c`, then `import openpyxl`). There is no `ODF_PYTHON` setting or other interpreter switch. Install the pinned packages from `requirements.txt` (`openpyxl==3.1.5` and `et-xmlfile==2.0.0`) into that same interpreter. Do not use `sudo` or an elevated global `pip install`.
+
 ```bash
-# macOS or Linux
+# macOS or Linux, from the repository root
+python3 -m venv .venv
+. .venv/bin/activate
+python3 -m pip install -r requirements.txt
+python3 -c "import openpyxl; print(openpyxl.__version__)"
 npm ci
 cp .env.example .env
 npm run dev
@@ -61,12 +72,21 @@ npm run dev
 ```
 
 ```powershell
-# Windows PowerShell
+# Windows PowerShell. A venv has python.exe; this API calls python3.
+py -3 -m venv .venv
+Copy-Item .\.venv\Scripts\python.exe .\.venv\Scripts\python3.exe
+.\.venv\Scripts\Activate.ps1
+python3 -m pip install -r requirements.txt
+python3 -c "import openpyxl; print(openpyxl.__version__)"
 npm ci
 Copy-Item .env.example .env
 npm run dev
 # equivalent after install: .\scripts\dev.ps1
 ```
+
+If `python3` is already on `PATH` and you are not using a venv, `python3 -m pip install --user -r requirements.txt` installs for that user only. On macOS, an externally managed system Python should use the venv above instead of `sudo pip`. On Debian/Ubuntu, `python3 -m venv` fails with `ensurepip is not available` until the distro package `python3-venv` (for example `python3.12-venv`) is installed; that is a system package, not `sudo pip`. Start `npm run dev` from the same activated environment so the API child process sees that `python3`.
+
+Before `npm test`, `python3 -c "import openpyxl"` must succeed. Without it, the case-import tests that read `shared-pipe.xlsx` fail; that is an environment gap, not a skipped test.
 
 | Service | Address |
 | --- | --- |

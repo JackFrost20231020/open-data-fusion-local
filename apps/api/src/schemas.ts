@@ -41,19 +41,29 @@ export const telemetryLatestQuerySchema = z.object({
   at: timestamp.optional(),
 });
 
-const granularityMs: Record<string, number> = {
+const granularityMs = {
   ms: 1,
   s: 1_000,
   m: 60_000,
   h: 3_600_000,
   d: 86_400_000,
-};
+} as const;
+
+type GranularityUnit = keyof typeof granularityMs;
+
+function isGranularityUnit(value: string): value is GranularityUnit {
+  return Object.hasOwn(granularityMs, value);
+}
 
 export function parseTelemetryGranularity(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const match = /^(\d+)(ms|s|m|h|d)$/.exec(value.trim());
-  if (!match) return undefined;
-  return Number(match[1]) * granularityMs[match[2]];
+  const amountText = match?.[1];
+  const unit = match?.[2];
+  if (amountText === undefined || unit === undefined || !isGranularityUnit(unit)) return undefined;
+  const amount = Number(amountText);
+  if (!Number.isFinite(amount)) return undefined;
+  return amount * granularityMs[unit];
 }
 
 export const telemetryAggregateQuerySchema = z
